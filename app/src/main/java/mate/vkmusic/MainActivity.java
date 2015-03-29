@@ -28,7 +28,7 @@ public class MainActivity extends ActionBarActivity {
         VKUIHelper.onCreate(this);
         VKSdk.initialize(sdkListener, "4845684", VKAccessToken.tokenFromSharedPreferences(this, sTokenKey));
         setContentView(R.layout.activity_main);
-        VKSdk.authorize(sMyScope, true, false);
+        VKSdk.authorize(sMyScope);
     }
 
     @Override
@@ -62,6 +62,7 @@ public class MainActivity extends ActionBarActivity {
 
         @Override
         public void onAccessDenied(VKError authorizationError) {
+            Log.e("main", "denied");
             new AlertDialog.Builder(MainActivity.this)
                     .setMessage(authorizationError.errorMessage)
                     .show();

@@ -17,9 +17,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -43,11 +45,14 @@ import java.util.Objects;
 
 public class MenuActivity extends ActionBarActivity {
 
+    private ListView mDrawerList;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_menu);
 
+        mDrawerList = (ListView) findViewById(R.id.listView);
         final EditText editText = (EditText)findViewById(R.id.editText);
         editText.requestFocus();
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -72,13 +77,16 @@ public class MenuActivity extends ActionBarActivity {
     }
 
     private VKRequest.VKRequestListener requestListener = new VKRequest.VKRequestListener(){
+
+        private ArrayList<VKAudio> audios;
+
         @Override
         public void onComplete(VKResponse response) {
 
-            final ArrayList<VKAudio> audios=new ArrayList<>();
+            audios = new ArrayList<>();
+
             try{
                 Map<String,Object> map= VKJsonHelper.getMap(response.json, "response");
-                Log.e("MyvkR", map.toString());
 
                 ArrayList audiosList = (ArrayList)map.get("items");
                 for(int i=0;i<audiosList.size();i++){
@@ -88,8 +96,6 @@ public class MenuActivity extends ActionBarActivity {
             catch (Exception e){
                 Log.e("MyvkRe", e.toString());
             }
-            LinearLayout ll = (LinearLayout)findViewById(R.id.linearLayout);
-            ll.removeAllViews();
 
             View.OnClickListener oclBtn = new View.OnClickListener() {
                 public void onClick(View v) {
@@ -113,17 +119,33 @@ public class MenuActivity extends ActionBarActivity {
 
             };
 
-            for(int i=0;i<audios.size();i++){
-
-                Button btn=new Button(MenuActivity.this);
-                btn.setText(audios.get(i).title);
-                btn.setId(i);
-                btn.setOnClickListener(oclBtn);
-                ll.addView(btn);
-            }
-
-
+            AudioDrawerListAdapter adapter = new AudioDrawerListAdapter(MenuActivity.this, audios);
+            mDrawerList.setAdapter(adapter);
+            mDrawerList.setOnItemClickListener(new DrawerItemClickListener());
         }
+
+        class DrawerItemClickListener implements ListView.OnItemClickListener {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                VKAudio audio =audios.get(position);
+
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(audio.url));
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+                    request.allowScanningByMediaScanner();
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                }
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, audio.title);
+                // get download service and enqueue file
+                DownloadManager manager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                try {
+                    manager.enqueue(request);
+                }
+                catch (Exception e){
+                    Log.e("manager load", e.toString());
+                }
+            }
+        }
+
         @Override
         public void onError(VKError error) {
             Log.e("MyvkE", error.toString());
@@ -133,6 +155,7 @@ public class MenuActivity extends ActionBarActivity {
             Log.e("MyvkF","fail");
         }
     };
+
 
 
     /**
